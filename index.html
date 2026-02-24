@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reproductor de Audio - Vila</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .cover-art {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        #current-track-title { color: var(--accent-color); font-weight: bold; margin-bottom: 20px; }
+
+        audio {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .playlist {
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .track-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+        }
+
+        .track-item:hover { background-color: #f0f8ff; }
+        .track-item.active {
+            background-color: #e1f0fa;
+            border-left: 4px solid var(--accent-color);
+            font-weight: bold;
+        }
+
+        .status-tag {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="https://www.dropbox.com/scl/fi/rq4ova980l2290u6wabsv/portada.jpg?rlkey=81jroblko77b1xfsy888gvqp9&st=8tpv0zxw&raw=1" alt="Portada" class="cover-art">
+    
+    <h1>Mi Audiolibro</h1>
+    <div id="current-track-title">Selecciona un capítulo</div>
+
+    <audio id="main-player" controls playsinline>
+        Tu navegador no soporta la reproducción de audio.
+    </audio>
+
+    <div class="playlist" id="playlist">
+        </div>
+
+    <div class="status-tag" id="status">Progreso guardado automáticamente</div>
+</div>
+
+<script>
+    const tracks = [
+        { name: "Capítulo 1", url: "https://www.dropbox.com/scl/fi/qi4ycqpeskco1cw9kwe3d/Cap1.mp3?rlkey=bheuvdvntnd1w8oov47w23s03&st=rm08gw99&raw=1" },
+        { name: "Capítulo 2", url: "https://www.dropbox.com/scl/fi/dkcfwk1njrv9numl148n2/Cap2.mp3?rlkey=qok90kv3bfezylxbmpwt0cyy0&st=vr3naesm&raw=1" },
+        { name: "Capítulo 3", url: "https://www.dropbox.com/scl/fi/5ipjpln14u2p3z3j19fn5/Cap3.mp3?rlkey=elbd560tjxzbvcx75yo69hdkb&st=44e340a2&raw=1" },
+        { name: "Capítulo 4", url: "https://www.dropbox.com/scl/fi/cdtayjvtklpm43560ppmw/Cap4.mp3?rlkey=y6e9caop452b2uk1pn8ur03d6&st=mobkqcao&raw=1" },
+        { name: "Capítulo 5", url: "https://www.dropbox.com/scl/fi/acumoi8fotymez6o9xmfq/Cap5.mp3?rlkey=zol69kaqmslxlduqm3flyi8qs&st=wafbv4ic&raw=1" },
+        { name: "Capítulo 6", url: "https://www.dropbox.com/scl/fi/26qqyfndodeunty2m7tbr/Cap6.mp3?rlkey=b4rr9msdbxf4zn2coizv8r0co&st=8vjs7t9v&raw=1" },
+        { name: "Capítulo 7", url: "https://www.dropbox.com/scl/fi/0xd0cjewycym0n14nlczp/Cap7.mp3?rlkey=9lmunze3rej02u4q7y95k11pu&st=8rryihrx&raw=1" },
+        { name: "Capítulo 8", url: "https://www.dropbox.com/scl/fi/y6vss26755359f9ytcmli/Cap8.mp3?rlkey=81ccylkt3ux8st53o4q0xhgnx&st=u2eeaf0q&raw=1" },
+        { name: "Capítulo 9", url: "https://www.dropbox.com/scl/fi/u9mz09bn4u9tzyzlh8jjx/Cap9.mp3?rlkey=r9k5jc30ruol21mcejxll5m91&st=je9a7dyr&raw=1" },
+        { name: "Capítulo 10", url: "https://www.dropbox.com/scl/fi/ifgd30rchzkz6coh228li/Cap10.mp3?rlkey=7oa3n5kqetirqnqxivh2p22sv&st=j6jjfaq6&raw=1" }
+    ];
+
+    const audio = document.getElementById('main-player');
+    const playlistContainer = document.getElementById('playlist');
+    const trackTitle = document.getElementById('current-track-title');
+    let currentTrackIndex = 0;
+
+    // 1. Crear la lista de reproducción en el HTML
+    function loadPlaylist() {
+        tracks.forEach((track, index) => {
+            const div = document.createElement('div');
+            div.className = 'track-item';
+            div.innerText = track.name;
+            div.id = `track-${index}`;
+            div.onclick = () => playTrack(index);
+            playlistContainer.appendChild(div);
+        });
+    }
+
+    // 2. Función para reproducir un capítulo
+    function playTrack(index, startTime = 0) {
+        if (index < 0 || index >= tracks.length) return;
+        
+        currentTrackIndex = index;
+        audio.src = tracks[index].url;
+        audio.currentTime = startTime;
+        trackTitle.innerText = "Reproduciendo: " + tracks[index].name;
+
+        // Marcar visualmente en la lista
+        document.querySelectorAll('.track-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(`track-${index}`).classList.add('active');
+
+        // Configurar Media Session (para ver controles con pantalla apagada)
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: tracks[index].name,
+                artist: 'Mi Audiolibro',
+                artwork: [{ src: 'https://www.dropbox.com/scl/fi/rq4ova980l2290u6wabsv/portada.jpg?rlkey=81jroblko77b1xfsy888gvqp9&st=8tpv0zxw&raw=1', sizes: '512x512', type: 'image/jpg' }]
+            });
+        }
+
+        audio.play().catch(e => console.log("Autoplay bloqueado, esperando interacción usuario"));
+    }
+
+    // 3. Guardar progreso cada 2 segundos
+    audio.ontimeupdate = () => {
+        localStorage.setItem('lastTrack', currentTrackIndex);
+        localStorage.setItem('lastTime', audio.currentTime);
+    };
+
+    // 4. Al terminar un audio, pasar al siguiente (Reproducción continua)
+    audio.onended = () => {
+        if (currentTrackIndex < tracks.length - 1) {
+            playTrack(currentTrackIndex + 1);
+        }
+    };
+
+    // 5. Cargar memoria al abrir la web
+    window.onload = () => {
+        loadPlaylist();
+        
+        const savedTrack = localStorage.getItem('lastTrack');
+        const savedTime = localStorage.getItem('lastTime');
+
+        if (savedTrack !== null) {
+            playTrack(parseInt(savedTrack), parseFloat(savedTime || 0));
+            audio.pause(); // No auto-reproducir con sonido al cargar por reglas del navegador
+            trackTitle.innerText = "Continuar: " + tracks[savedTrack].name;
+        } else {
+            playTrack(0, 0);
+            audio.pause();
+        }
+    };
+</script>
+
+</body>
+</html>
